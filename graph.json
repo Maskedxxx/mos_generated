@@ -1,0 +1,7 @@
+{
+  "start": "akt_nachala",
+  "nodes": [
+    {"doc_type": "akt_nachala", "title": "Акт начала мероприятий", "position": 1}
+  ],
+  "edges": []
+}
