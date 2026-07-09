@@ -12,6 +12,7 @@ from generators.polozhenie_comp_ppu import PolozhenieCompPpu
 from generators.prikaz_otvetstvennyh import PrikazOtvetstvennyh
 from generators.prikaz_tirazh import PrikazTirazh
 from generators.protokol_vypolneniya import ProtokolVypolneniya
+from generators.prikaz_ic import PrikazIc
 
 # doc_type -> класс генератора
 GENERATORS = {
@@ -23,6 +24,7 @@ GENERATORS = {
     PrikazOtvetstvennyh.DOC_TYPE: PrikazOtvetstvennyh,
     PrikazTirazh.DOC_TYPE: PrikazTirazh,
     ProtokolVypolneniya.DOC_TYPE: ProtokolVypolneniya,
+    PrikazIc.DOC_TYPE: PrikazIc,
 }
 
 
