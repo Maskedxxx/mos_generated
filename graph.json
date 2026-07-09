@@ -15,6 +15,11 @@
       "doc_type": "polozhenie_ppu",
       "title": "Положение о системе подачи и реализации ППУ",
       "position": 3
+    },
+    {
+      "doc_type": "prikaz_comp_ppu",
+      "title": "Приказ о конкурсах проектов и ППУ",
+      "position": 4
     }
   ],
   "edges": []
