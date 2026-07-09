@@ -30,6 +30,11 @@
       "doc_type": "prikaz_otvetstvennyh",
       "title": "Приказ о назначении ответственных лиц",
       "position": 6
+    },
+    {
+      "doc_type": "prikaz_tirazh",
+      "title": "Приказ о переходе на этап Тиражирования",
+      "position": 7
     }
   ],
   "edges": []
