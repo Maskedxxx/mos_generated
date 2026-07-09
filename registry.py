@@ -8,6 +8,7 @@ from generators.akt_nachala import AktNachala
 from generators.prikaz_ppu import PrikazPpu
 from generators.polozhenie_ppu import PolozheniePpu
 from generators.prikaz_comp_ppu import PrikazCompPpu
+from generators.polozhenie_comp_ppu import PolozhenieCompPpu
 
 # doc_type -> класс генератора
 GENERATORS = {
@@ -15,6 +16,7 @@ GENERATORS = {
     PrikazPpu.DOC_TYPE: PrikazPpu,
     PolozheniePpu.DOC_TYPE: PolozheniePpu,
     PrikazCompPpu.DOC_TYPE: PrikazCompPpu,
+    PolozhenieCompPpu.DOC_TYPE: PolozhenieCompPpu,
 }
 
 

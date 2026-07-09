@@ -20,6 +20,11 @@
       "doc_type": "prikaz_comp_ppu",
       "title": "Приказ о конкурсах проектов и ППУ",
       "position": 4
+    },
+    {
+      "doc_type": "polozhenie_comp_ppu",
+      "title": "Положение о конкурсах проектов и ППУ",
+      "position": 5
     }
   ],
   "edges": []
