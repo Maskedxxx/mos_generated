@@ -35,6 +35,11 @@
       "doc_type": "prikaz_tirazh",
       "title": "Приказ о переходе на этап Тиражирования",
       "position": 7
+    },
+    {
+      "doc_type": "protokol_vypolneniya",
+      "title": "Протокол выполнения мероприятий",
+      "position": 8
     }
   ],
   "edges": []
