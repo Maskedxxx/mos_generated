@@ -5,10 +5,12 @@
 Новый тип = добавить импорт + строку в GENERATORS.
 """
 from generators.akt_nachala import AktNachala
+from generators.prikaz_ppu import PrikazPpu
 
 # doc_type -> класс генератора
 GENERATORS = {
     AktNachala.DOC_TYPE: AktNachala,
+    PrikazPpu.DOC_TYPE: PrikazPpu,
 }
 
 

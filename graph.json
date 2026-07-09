@@ -1,7 +1,16 @@
 {
   "start": "akt_nachala",
   "nodes": [
-    {"doc_type": "akt_nachala", "title": "Акт начала мероприятий", "position": 1}
+    {
+      "doc_type": "akt_nachala",
+      "title": "Акт начала мероприятий",
+      "position": 1
+    },
+    {
+      "doc_type": "prikaz_ppu",
+      "title": "Приказ о системе подачи и реализации ППУ",
+      "position": 2
+    }
   ],
   "edges": []
 }
