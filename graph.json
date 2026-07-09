@@ -10,6 +10,11 @@
       "doc_type": "prikaz_ppu",
       "title": "Приказ о системе подачи и реализации ППУ",
       "position": 2
+    },
+    {
+      "doc_type": "polozhenie_ppu",
+      "title": "Положение о системе подачи и реализации ППУ",
+      "position": 3
     }
   ],
   "edges": []

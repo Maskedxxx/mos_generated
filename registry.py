@@ -6,11 +6,13 @@
 """
 from generators.akt_nachala import AktNachala
 from generators.prikaz_ppu import PrikazPpu
+from generators.polozhenie_ppu import PolozheniePpu
 
 # doc_type -> класс генератора
 GENERATORS = {
     AktNachala.DOC_TYPE: AktNachala,
     PrikazPpu.DOC_TYPE: PrikazPpu,
+    PolozheniePpu.DOC_TYPE: PolozheniePpu,
 }
 
 
