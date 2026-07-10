@@ -65,6 +65,11 @@
       "doc_type": "cheklist_eu",
       "title": "Чек-лист выбора эталонного участка",
       "position": 13
+    },
+    {
+      "doc_type": "polozhenie_po",
+      "title": "Положение о Проектном офисе по производственной эффективности",
+      "position": 14
     }
   ],
   "edges": []
