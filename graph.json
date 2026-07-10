@@ -70,6 +70,11 @@
       "doc_type": "polozhenie_po",
       "title": "Положение о Проектном офисе по производственной эффективности",
       "position": 14
+    },
+    {
+      "doc_type": "prikaz_formirovanie_po",
+      "title": "Приказ о формировании Проектного офиса",
+      "position": 15
     }
   ],
   "edges": []

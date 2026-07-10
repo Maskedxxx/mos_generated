@@ -18,6 +18,7 @@ from generators.prikaz_pa import PrikazPa
 from generators.prikaz_vyhod import PrikazVyhod
 from generators.cheklist_eu import CheklistEu
 from generators.polozhenie_po import PolozheniePo
+from generators.prikaz_formirovanie_po import PrikazFormirovaniePo
 
 # doc_type -> класс генератора
 GENERATORS = {
@@ -35,6 +36,7 @@ GENERATORS = {
     PrikazVyhod.DOC_TYPE: PrikazVyhod,
     CheklistEu.DOC_TYPE: CheklistEu,
     PolozheniePo.DOC_TYPE: PolozheniePo,
+    PrikazFormirovaniePo.DOC_TYPE: PrikazFormirovaniePo,
 }
 
 
