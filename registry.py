@@ -15,6 +15,7 @@ from generators.protokol_vypolneniya import ProtokolVypolneniya
 from generators.prikaz_ic import PrikazIc
 from generators.prikaz_ic_potoka import PrikazIcPotoka
 from generators.prikaz_pa import PrikazPa
+from generators.prikaz_vyhod import PrikazVyhod
 
 # doc_type -> класс генератора
 GENERATORS = {
@@ -29,6 +30,7 @@ GENERATORS = {
     PrikazIc.DOC_TYPE: PrikazIc,
     PrikazIcPotoka.DOC_TYPE: PrikazIcPotoka,
     PrikazPa.DOC_TYPE: PrikazPa,
+    PrikazVyhod.DOC_TYPE: PrikazVyhod,
 }
 
 
