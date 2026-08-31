@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>МосМониторинг · Генерация документов</title>
+<style>
+  :root { --blue:#2563EB; --ink:#1F2937; --muted:#6B7280; --line:#E5E7EB; --bg:#F9FAFB; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; color:var(--ink); background:var(--bg); }
+  header { background:#fff; border-bottom:1px solid var(--line); padding:16px 28px; display:flex; align-items:center; gap:14px; position:sticky; top:0; z-index:10; }
+  .logo { width:38px; height:38px; border-radius:9px; background:var(--blue); color:#fff; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; }
+  header .t { font-weight:800; font-size:20px; letter-spacing:-0.01em; }
+  header .s { color:var(--muted); font-size:13px; margin-top:1px; }
+  .wrap { max-width:920px; margin:28px auto; padding:0 20px; }
+  .card { background:#fff; border:1px solid var(--line); border-radius:14px; padding:24px; margin-bottom:20px; }
+  .card h2 { margin:0 0 4px; font-size:17px; }
+  .card p.hint { margin:0 0 18px; color:var(--muted); font-size:13px; }
+  .dropdown { position:relative; max-width:560px; }
+  .dd-toggle { width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; border:1.5px solid var(--line); border-radius:10px; padding:11px 16px; cursor:pointer; text-align:left; font:inherit; color:var(--ink); }
+  .dd-toggle:hover { border-color:#c7d2fe; }
+  .dd-toggle.open { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  #ddLabel { flex:1; min-width:0; }
+  .dd-arrow { color:var(--muted); font-size:12px; transition:transform .15s; }
+  .dd-toggle.open .dd-arrow { transform:rotate(180deg); }
+  .dd-main { display:block; font-weight:700; font-size:15px; }
+  .dd-main .dd-code { display:inline-block; min-width:38px; color:var(--blue); font-weight:800; margin-right:8px; }
+  .dd-sub { display:block; color:var(--muted); font-size:12px; margin-top:1px; font-family:ui-monospace,Menlo,Consolas,monospace; }
+  .dd-menu { position:absolute; z-index:20; left:0; right:0; margin-top:6px; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 8px 28px rgba(0,0,0,.12); max-height:360px; overflow:auto; padding:5px; }
+  .dd-menu[hidden] { display:none; }
+  .dd-opt { padding:9px 12px; border-radius:8px; cursor:pointer; }
+  .dd-opt:hover { background:var(--bg); }
+  .dd-opt.active { background:#EFF4FF; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px 20px; }
+  @media (max-width:640px){ .grid{ grid-template-columns:1fr; } }
+  .field label { display:block; font-size:13px; font-weight:600; margin-bottom:6px; }
+  .field label .req { color:#DC2626; }
+  .field label .src { float:right; font-weight:500; font-size:11px; color:var(--muted); background:var(--bg); border:1px solid var(--line); border-radius:6px; padding:1px 7px; }
+  .field input { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:9px; font-size:14px; outline:none; }
+  .field input:focus { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+  .field input::placeholder { color:#9CA3AF; opacity:0.55; font-style:italic; }
+  .actions { margin-top:22px; display:flex; align-items:center; gap:14px; }
+  button.gen { background:var(--blue); color:#fff; border:0; border-radius:10px; padding:12px 24px; font-size:15px; font-weight:700; cursor:pointer; }
+  button.gen:hover { background:#1D4ED8; }
+  button.gen:disabled { background:#9CA3AF; cursor:default; }
+  .status { font-size:14px; }
+  .status.ok { color:#059669; } .status.err { color:#DC2626; }
+  .empty { color:var(--muted); font-size:14px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">AI</div>
+  <div>
+    <div class="t">Генерация документов</div>
+    <div class="s">Платформа МосМониторинг · создание документов по шаблонам</div>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="card">
+    <h2>1. Выберите тип документа</h2>
+    <p class="hint">ИИ создаст готовый .docx по утверждённому шаблону</p>
+    <div class="dropdown" id="dropdown">
+      <button type="button" class="dd-toggle" id="ddToggle" onclick="toggleMenu(event)">
+        <span id="ddLabel" class="empty">Загрузка…</span>
+        <span class="dd-arrow">&#9662;</span>
+      </button>
+      <div class="dd-menu" id="ddMenu" hidden></div>
+    </div>
+  </div>
+
+  <div class="card" id="formCard" style="display:none">
+    <h2>2. Заполните значения</h2>
+    <p class="hint" id="formHint"></p>
+    <div class="grid" id="fields"></div>
+    <div class="actions">
+      <button class="gen" id="genBtn" onclick="generate()">Сгенерировать документ</button>
+      <span class="status" id="status"></span>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "/api";
+let current = null;
+let nodes = [];
+const codeKey = c => { const p=(c||"99.99").split(".").map(Number); return p[0]*1000+(p[1]||0); };
+
+async function loadGraph() {
+  const menu = document.getElementById("ddMenu");
+  try {
+    const g = await fetch(API + "/graph").then(r => r.json());
+    nodes = g.nodes.slice().sort((a,b)=>codeKey(a.code)-codeKey(b.code));
+    menu.innerHTML = "";
+    nodes.forEach(n => {
+      const o = document.createElement("div");
+      o.className = "dd-opt"; o.dataset.dt = n.doc_type;
+      o.innerHTML = `<div class="dd-main"><span class="dd-code">${n.code||''}</span>${n.title}</div><div class="dd-sub">${n.doc_type}</div>`;
+      o.onclick = () => { pickOption(n); closeMenu(); };
+      menu.appendChild(o);
+    });
+    if (nodes.length) pickOption(nodes[0]);
+  } catch(e) { document.getElementById("ddLabel").innerHTML = `<span class="status err">Ошибка загрузки: ${e}</span>`; }
+}
+
+function pickOption(n) {
+  document.getElementById("ddLabel").innerHTML =
+    `<span class="dd-main"><span class="dd-code">${n.code||''}</span>${n.title}</span><span class="dd-sub">${n.doc_type}</span>`;
+  document.querySelectorAll(".dd-opt").forEach(o => o.classList.toggle("active", o.dataset.dt === n.doc_type));
+  selectType(n.doc_type);
+}
+
+function toggleMenu(e) {
+  e.stopPropagation();
+  const m = document.getElementById("ddMenu"), t = document.getElementById("ddToggle");
+  const willOpen = m.hidden; m.hidden = !willOpen; t.classList.toggle("open", willOpen);
+}
+function closeMenu() {
+  document.getElementById("ddMenu").hidden = true;
+  document.getElementById("ddToggle").classList.remove("open");
+}
+document.addEventListener("click", e => { if (!e.target.closest("#dropdown")) closeMenu(); });
+
+async function selectType(dt) {
+  current = dt;
+  const card = document.getElementById("formCard");
+  const fieldsBox = document.getElementById("fields");
+  fieldsBox.innerHTML = "<span class='empty'>Загрузка формы…</span>";
+  card.style.display = "block";
+  document.getElementById("status").textContent = "";
+  try {
+    const s = await fetch(API + "/types/" + dt + "/schema").then(r => r.json());
+    document.getElementById("formHint").textContent = s.title;
+    fieldsBox.innerHTML = "";
+    (s.fields || []).forEach(f => {
+      const wrap = document.createElement("div");
+      wrap.className = "field";
+      const srcTag = f.source ? `<span class="src">${f.source === "own" ? "своё" : f.source}</span>` : "";
+      wrap.innerHTML = `<label>${f.label}${f.required ? ' <span class="req">*</span>' : ''}${srcTag}</label>
+        <input data-key="${f.key}" data-required="${f.required ? '1' : ''}" data-label="${f.label}" list="dl_${f.key}" placeholder="${f.hint || ''}" />
+        <datalist id="dl_${f.key}"></datalist>`;
+      fieldsBox.appendChild(wrap);
+    });
+    const orgInput = fieldsBox.querySelector('input[data-key="org_full"]');
+    if (orgInput) {
+      const trigger = () => applyOrgSuggestions(orgInput.value);
+      orgInput.addEventListener("change", trigger);
+      orgInput.addEventListener("blur", trigger);
+    }
+    loadOrgs();
+  } catch(e) { fieldsBox.innerHTML = `<span class="status err">Ошибка схемы: ${e}</span>`; }
+}
+
+async function loadOrgs() {
+  try {
+    const orgs = await fetch(API + "/orgs").then(r => r.json());
+    const dl = document.getElementById("dl_org_full");
+    if (dl) dl.innerHTML = (orgs || []).map(o => `<option value="${String(o).replace(/"/g, '&quot;')}"></option>`).join("");
+  } catch (e) {}
+}
+
+async function applyOrgSuggestions(orgVal) {
+  if (!orgVal || !orgVal.trim()) return;
+  let sug = {};
+  try { sug = await fetch(API + "/org/suggest?org=" + encodeURIComponent(orgVal)).then(r => r.json()); }
+  catch (e) { return; }
+  document.querySelectorAll("#fields input").forEach(inp => {
+    const key = inp.dataset.key;
+    if (key === "org_full") return;
+    const vals = sug[key];
+    if (!vals || !vals.length) return;
+    const dl = document.getElementById("dl_" + key);
+    if (dl) dl.innerHTML = vals.map(v => `<option value="${String(v).replace(/"/g, '&quot;')}"></option>`).join("");
+    if (!inp.value.trim()) inp.value = vals[0];
+  });
+}
+
+function generate() {
+  if (!current) return;
+  const st = document.getElementById("status");
+  const params = new URLSearchParams();
+  params.set("session_id", "web");
+  const missing = [];
+  document.querySelectorAll("#fields input").forEach(i => {
+    const v = i.value.trim();
+    if (v) params.set(i.dataset.key, v);
+    else if (i.dataset.required === "1") missing.push(i.dataset.label || i.dataset.key);
+  });
+  if (missing.length) {
+    st.className = "status err";
+    st.textContent = "Заполните обязательные поля: " + missing.join(", ");
+    return;
+  }
+  const url = API + "/types/" + current + "/download?" + params.toString();
+  // Нативное скачивание через скрытый iframe: браузер сам сохраняет ответ (Content-Disposition).
+  // Никаких blob/anchor/revoke — не ломается и не блокируется мультизагрузкой.
+  let ifr = document.getElementById("dl_frame");
+  if (!ifr) {
+    ifr = document.createElement("iframe");
+    ifr.id = "dl_frame"; ifr.style.display = "none";
+    document.body.appendChild(ifr);
+  }
+  ifr.src = url;
+  st.className = "status ok"; st.textContent = "Готово — документ скачан ✓";
+}
+
+loadGraph();
+</script>
+</body>
+</html>
