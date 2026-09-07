@@ -5,6 +5,7 @@
 """
 import io
 import json
+import os
 import re
 from datetime import datetime
 from pathlib import Path
@@ -21,7 +22,8 @@ SESSIONS: dict[str, dict] = {}
 # На каждый вызов generate() пишем каталог-сессию по образцу аудита
 # (mos_analiz_refactor: logs_result/<тип>/session_<время>/): чем документ был заполнен,
 # что выдали и когда. Без этого нельзя ответить «сколько документов выпущено».
-TRACES_DIR = Path(__file__).resolve().parent / "logs_generated"
+# Путь переопределяется переменной GEN_TRACES_DIR (в Docker — том).
+TRACES_DIR = Path(os.getenv("GEN_TRACES_DIR") or Path(__file__).resolve().parent / "logs_generated")
 
 
 def _write_trace(doc_type: str, session_id: str, values: dict,
@@ -56,7 +58,8 @@ def _write_trace(doc_type: str, session_id: str, values: dict,
 
 # ── Персистентный стор значений по ООО (автозаполнение) ──
 # Ключ — нормализованное наименование ООО; значение — {field_key: [values...]} (свежие первыми).
-ORG_STORE_PATH = Path(__file__).resolve().parent / "_org_store.json"
+# Путь переопределяется переменной GEN_ORG_STORE (в Docker — том). Каталог создаётся при записи.
+ORG_STORE_PATH = Path(os.getenv("GEN_ORG_STORE") or Path(__file__).resolve().parent / "_org_store.json")
 _ORG_ANCHOR = "org_full"  # поле-якорь ООО
 _LEGAL_FORMS = {"ооо", "оао", "зао", "ао", "пао", "нао", "ип", "муп", "гуп", "фгуп", "ано", "нко"}
 
@@ -79,6 +82,7 @@ def _load_org_store() -> dict:
 
 
 def _save_org_store(store: dict) -> None:
+    ORG_STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = ORG_STORE_PATH.with_suffix(".tmp")
     tmp.write_text(json.dumps(store, ensure_ascii=False, indent=2), encoding="utf-8")
     tmp.replace(ORG_STORE_PATH)
