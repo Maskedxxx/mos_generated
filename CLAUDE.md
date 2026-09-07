@@ -16,7 +16,7 @@
 | Задачи по обоим сервисам | `~/projects/ТРЕКЕР_МосМониторинг.md` (стенд) |
 | Соответствие типов каталогу заказчика | `~/Downloads/МАППИНГ_типов_МосМониторинг.md` (у владельца) |
 | Сервис проверки (дуальный), общий Docker Compose | `~/projects/mos_analiz_refactor` |
-| Механики обоих сервисов | скил `mosmonitoring-mechanics` |
+| Скил Claude Code: процедуры и механики обоих сервисов | `mos_analiz_refactor/.claude/skills/mosmonitoring/` (установка: `bash scripts/install_skill.sh` там) |
 
 ## Жёсткие правила
 
