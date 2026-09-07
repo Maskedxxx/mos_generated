@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 """
 Генератор документа «Положение о конкурсах проектов и ППУ» (doc_type=polozhenie_comp_ppu).
-Контракт skill mosgen-dev §1.1. Эталон — «ПРИМЕР №4 ООО Бизнес-отель» (docx). Тело —
+Контракт генератора — docs/ADD_GENERATOR.md. Эталон — «ПРИМЕР №4 ООО Бизнес-отель» (docx). Тело —
 фиксированный методический регламент о конкурсах (разделы, номинации, УТВЕРЖДАЮ),
 компанийонезависимо; переменное — привязка к родительскому приказу в шапке T0.
 """
 from pathlib import Path
+from typing import Any
 try:
     from docxtpl import DocxTemplate
 except ImportError:
@@ -13,6 +14,12 @@ except ImportError:
 
 
 class PolozhenieCompPpu:
+    """
+    Генератор «Положение о конкурсах проектов и ППУ» — Приложение №1 к приказу о конкурсах.
+    Пользователь вводит 2 поля (оба обязательные, source=own, дефолтов и inherited нет): дата и номер
+    родительского приказа для шапки. Тело — фиксированный методический регламент о конкурсах
+    (разделы, номинации, гриф УТВЕРЖДАЮ), зашит в шаблон polozhenie_comp_ppu.docx.
+    """
     DOC_TYPE = "polozhenie_comp_ppu"
     TITLE = "Положение о конкурсах проектов и ППУ"
     TEMPLATE = str(Path(__file__).resolve().parent.parent / "templates" / "polozhenie_comp_ppu.docx")
@@ -21,15 +28,18 @@ class PolozhenieCompPpu:
         {"key": "prikaz_num",  "label": "Номер приказа",                                   "type": "text", "required": True, "source": "own", "hint": "13-ПТ"},
     ]
 
-    def defaults(self):
+    def defaults(self) -> dict:
+        """значения по умолчанию из схемы"""
         return {f["key"]: f["default"] for f in self.SCHEMA if "default" in f}
 
-    def context(self, values):
+    def context(self, values: dict) -> dict:
+        """итоговый контекст: дефолты, поверх — непустые значения эксперта"""
         ctx = self.defaults()
         ctx.update({k: v for k, v in (values or {}).items() if v not in (None, "")})
         return ctx
 
-    def generate(self, values):
+    def generate(self, values: dict) -> Any:
+        """собрать .docx: проверить обязательные → подставить в шаблон. Возвращает DocxTemplate (API сохранит)."""
         ctx = self.context(values)
         missing = [f["key"] for f in self.SCHEMA if f.get("required") and not ctx.get(f["key"])]
         if missing:

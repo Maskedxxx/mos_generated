@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 Генератор «Приказ о формировании Проектного офиса» (doc_type=prikaz_formirovanie_po).
-Контракт skill mosgen-dev §1.1. Эталон — чистый шаблон doc_configs (ООО «Название»), без логотипа.
+Контракт генератора — docs/ADD_GENERATOR.md. Эталон — чистый шаблон doc_configs (ООО «Название»), без логотипа.
 23 метки: реквизиты (дата, номер, организация); сроки и ответственные в пунктах (rule 6 — заполнены);
 руководитель ПО; 3 специалиста ПО ФИО+должность (rule 7 ≥3 реальных); подписант (должность+ФИО, М.П.).
 Тело приказа (пункты-поручения, заголовок) — методкаркас. Город г. Москва константой. Заливка снята.
 """
 from pathlib import Path
+from typing import Any
 try:
     from docxtpl import DocxTemplate
 except ImportError:
@@ -14,6 +15,12 @@ except ImportError:
 
 
 class PrikazFormirovaniePo:
+    """
+    Генератор «Приказ о формировании Проектного офиса». Пользователь вводит 23 поля (все обязательные,
+    source=own, дефолтов и inherited нет): организация, номер и дата приказа, сроки и ответственные
+    по пунктам 1–6 и 8, руководитель ПО, три специалиста ПО (ФИО+должность), подписант.
+    Тело приказа (пункты-поручения, заголовок) и город г. Москва зашиты в шаблон prikaz_formirovanie_po.docx.
+    """
     DOC_TYPE = "prikaz_formirovanie_po"
     TITLE = "Приказ о формировании Проектного офиса"
     TEMPLATE = str(Path(__file__).resolve().parent.parent / "templates" / "prikaz_formirovanie_po.docx")
@@ -42,10 +49,14 @@ class PrikazFormirovaniePo:
         {"key": "signer_post",    "label": "Должность подписанта", "type": "text", "required": True, "source": "own", "hint": "Генеральный директор"},
         {"key": "signer_fio",     "label": "ФИО подписанта (Фамилия И.О.)", "type": "text", "required": True, "source": "own", "hint": "А.А. Директоров"},
     ]
-    def defaults(self): return {f["key"]: f["default"] for f in self.SCHEMA if "default" in f}
-    def context(self, values):
+    def defaults(self) -> dict:
+        """значения по умолчанию из схемы (в этой схеме дефолтов нет — пустой словарь)"""
+        return {f["key"]: f["default"] for f in self.SCHEMA if "default" in f}
+    def context(self, values: dict) -> dict:
+        """итоговый контекст: дефолты, поверх — непустые значения эксперта"""
         ctx=self.defaults(); ctx.update({k:v for k,v in (values or {}).items() if v not in (None,"")}); return ctx
-    def generate(self, values):
+    def generate(self, values: dict) -> Any:
+        """собрать .docx: проверить обязательные → подставить в шаблон. Возвращает DocxTemplate (API сохранит)."""
         ctx=self.context(values)
         missing=[f["key"] for f in self.SCHEMA if f.get("required") and not ctx.get(f["key"])]
         if missing: raise ValueError(f"Не заполнены обязательные поля: {missing}")

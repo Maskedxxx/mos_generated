@@ -2,10 +2,11 @@
 """
 Генератор документа «Акт начала мероприятий» (doc_type=akt_nachala) — START-узел графа.
 
-Контракт (см. skill mosgen-dev §1.1): DOC_TYPE, TEMPLATE, SCHEMA, generate(values).
+Контракт (контракт генератора — docs/ADD_GENERATOR.md): DOC_TYPE, TEMPLATE, SCHEMA, generate(values).
 Сборка через docxtpl: реальный .docx-шаблон с метками {{...}}, подстановка значений.
 """
 from pathlib import Path
+from typing import Any
 
 try:
     from docxtpl import DocxTemplate
@@ -14,6 +15,12 @@ except ImportError:  # docxtpl ставится в venv сервиса (см. §
 
 
 class AktNachala:
+    """
+    Генератор «Акт начала мероприятий» — START-узел графа: акт о начале мероприятий по Соглашению
+    между предприятием и РЦК. Пользователь вводит 13 полей (все обязательные, source=own, inherited нет):
+    8 — предприятие, подписант, дата акта, дата и номер Соглашения; 5 полей РЦК (представитель в двух
+    падежах, доверенность) преднаполнены default'ами. Текст акта зашит в шаблон akt_nachala.docx.
+    """
     DOC_TYPE = "akt_nachala"
     TITLE = "Акт начала мероприятий"
     # путь к шаблону относительно корня сервиса: mos_generated/templates/akt_nachala.docx
@@ -50,7 +57,7 @@ class AktNachala:
         ctx.update({k: v for k, v in (values or {}).items() if v not in (None, "")})
         return ctx
 
-    def generate(self, values: dict):
+    def generate(self, values: dict) -> Any:
         """собрать .docx: проверить обязательные → подставить в шаблон. Возвращает DocxTemplate (API сохранит)."""
         ctx = self.context(values)
         # проверка обязательных полей (после мёржа дефолтов)

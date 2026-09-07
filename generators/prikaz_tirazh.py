@@ -1,12 +1,13 @@
 # -*- coding: utf-8 -*-
 """
 Генератор «Приказ о переходе программы на фазу Тиражирование» (doc_type=prikaz_tirazh).
-Контракт skill mosgen-dev §1.1. Эталон — ЧИСТАЯ болванка «наименование предприятия» (без логотипа),
+Контракт генератора — docs/ADD_GENERATOR.md. Эталон — ЧИСТАЯ болванка «наименование предприятия» (без логотипа),
 переменные места были размечены жёлтой заливкой. Собран скелет: жёлтые прозаические места -> метки
 (заливка снята). Таблицы (цели, планы) и подписи приложений — методический каркас с fill-in бланками
 (эксперт дозаполняет). Город «г. Москва» и весь методический текст зашиты. Плейсхолдеры самодостаточные.
 """
 from pathlib import Path
+from typing import Any
 try:
     from docxtpl import DocxTemplate
 except ImportError:
@@ -14,6 +15,12 @@ except ImportError:
 
 
 class PrikazTirazh:
+    """
+    Генератор «Приказ о переходе на этап Тиражирования» — .docx по шаблону prikaz_tirazh.docx.
+    Пользователь вводит 13 обязательных полей (все source=own, без дефолтов и наследования): организация, номер и дата приказа,
+    3 руководителя (Программы, «Оптимизация потоков», «Управление проектами и изменениями»), ФИО кадровика для ознакомления,
+    дата отменяемого приказа, подписант, 3 подписи приложений app_sig1..app_sig3. В шаблон зашиты: город «г. Москва», методический текст, таблицы целей/планов как fill-in бланки.
+    """
     DOC_TYPE = "prikaz_tirazh"
     TITLE = "Приказ о переходе на этап Тиражирования"
     TEMPLATE = str(Path(__file__).resolve().parent.parent / "templates" / "prikaz_tirazh.docx")
@@ -32,10 +39,14 @@ class PrikazTirazh:
         {"key": "app_sig2", "label": "Приложение — подпись «Руководитель Программы» (И.О. Фамилия)", "type": "text", "required": True, "source": "own", "hint": "И.И. Иванов"},
         {"key": "app_sig3", "label": "Приложение — подпись «Заместитель директора по управлению персоналом» (И.О. Фамилия)", "type": "text", "required": True, "source": "own", "hint": "К.К. Кузнецова"},
     ]
-    def defaults(self): return {f["key"]: f["default"] for f in self.SCHEMA if "default" in f}
-    def context(self, values):
+    def defaults(self) -> dict:
+        """значения по умолчанию из схемы"""
+        return {f["key"]: f["default"] for f in self.SCHEMA if "default" in f}
+    def context(self, values: dict) -> dict:
+        """итоговый контекст: дефолты, поверх — непустые значения эксперта"""
         ctx=self.defaults(); ctx.update({k:v for k,v in (values or {}).items() if v not in (None,"")}); return ctx
-    def generate(self, values):
+    def generate(self, values: dict) -> Any:
+        """собрать .docx: проверить обязательные → подставить в шаблон. Возвращает DocxTemplate (API сохранит)."""
         ctx=self.context(values)
         missing=[f["key"] for f in self.SCHEMA if f.get("required") and not ctx.get(f["key"])]
         if missing: raise ValueError(f"Не заполнены обязательные поля: {missing}")

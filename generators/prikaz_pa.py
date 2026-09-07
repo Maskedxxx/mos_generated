@@ -1,13 +1,14 @@
 # -*- coding: utf-8 -*-
 """
 Генератор «Приказ о ведении производственного анализа» (doc_type=prikaz_pa).
-Контракт skill mosgen-dev §1.1. Эталон ФорСИ без логотипа. Скелет: org, номер, дата,
+Контракт генератора — docs/ADD_GENERATOR.md. Эталон ФорСИ без логотипа. Скелет: org, номер, дата,
 должности+ФИО ответственных (п.1 ведение ПА, п.1.3 адресат отчётности, п.3 управление проектами,
 п.4 ознакомление) и подписант → 13 меток. Методический каркас (преамбула, МУ-55-2024 ФЦК, формы
 Приложений 1-3, направление «Управление проектами и изменениями») зашит. Город г. Москва.
 ФИО ответственных — эксперт вводит в нужном падеже (дательный для поручений, родительный для адресата).
 """
 from pathlib import Path
+from typing import Any
 try:
     from docxtpl import DocxTemplate
 except ImportError:
@@ -15,6 +16,12 @@ except ImportError:
 
 
 class PrikazPa:
+    """
+    Генератор «Приказ о ведении производственного анализа» — .docx по шаблону prikaz_pa.docx.
+    Пользователь вводит 13 обязательных полей (все source=own, без дефолтов и наследования): организация, номер и дата приказа,
+    должность+ФИО ответственных в нужном падеже (ведение ПА п.1, адресат отчётности п.1.3, управление проектами п.3, ознакомление п.4), подписант.
+    В шаблон зашиты: город г. Москва, преамбула, МУ-55-2024 ФЦК, формы Приложений 1-3, направление «Управление проектами и изменениями».
+    """
     DOC_TYPE = "prikaz_pa"
     TITLE = "Приказ о ведении производственного анализа"
     TEMPLATE = str(Path(__file__).resolve().parent.parent / "templates" / "prikaz_pa.docx")
@@ -33,10 +40,14 @@ class PrikazPa:
         {"key": "signer_post", "label": "Должность подписанта", "type": "text", "required": True, "source": "own", "hint": "Генеральный директор"},
         {"key": "signer_fio",  "label": "ФИО подписанта (И.О. Фамилия)", "type": "text", "required": True, "source": "own", "hint": "И.И. Иванов"},
     ]
-    def defaults(self): return {f["key"]: f["default"] for f in self.SCHEMA if "default" in f}
-    def context(self, values):
+    def defaults(self) -> dict:
+        """значения по умолчанию из схемы"""
+        return {f["key"]: f["default"] for f in self.SCHEMA if "default" in f}
+    def context(self, values: dict) -> dict:
+        """итоговый контекст: дефолты, поверх — непустые значения эксперта"""
         ctx=self.defaults(); ctx.update({k:v for k,v in (values or {}).items() if v not in (None,"")}); return ctx
-    def generate(self, values):
+    def generate(self, values: dict) -> Any:
+        """собрать .docx: проверить обязательные → подставить в шаблон. Возвращает DocxTemplate (API сохранит)."""
         ctx=self.context(values)
         missing=[f["key"] for f in self.SCHEMA if f.get("required") and not ctx.get(f["key"])]
         if missing: raise ValueError(f"Не заполнены обязательные поля: {missing}")

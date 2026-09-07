@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Движок сервиса: сессии (копилка значений для наследования) + рендер через реестр.
-См. skill mosgen-dev §1.4. Сессии пока in-memory (MVP).
+Устройство — docs/ARCHITECTURE.md §1. Сессии пока in-memory (MVP).
 """
 import io
 import json
@@ -9,6 +9,7 @@ import os
 import re
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from registry import get_generator
 
@@ -32,8 +33,15 @@ def _write_trace(doc_type: str, session_id: str, values: dict,
     """Пишет трейс одной генерации. Отказ записи НЕ должен ронять выдачу документа."""
     try:
         now = datetime.now()
-        session_dir = TRACES_DIR / doc_type / f"session_{now.strftime('%Y%m%d_%H%M%S_%f')[:-3]}"
-        session_dir.mkdir(parents=True, exist_ok=True)
+        stamp = now.strftime('%Y%m%d_%H%M%S_%f')[:-3]
+        session_dir = TRACES_DIR / doc_type / f"session_{stamp}"
+        # Две генерации в одну миллисекунду (например, документ и сразу повтор) не должны
+        # перезаписывать один каталог — добавляем порядковый суффикс.
+        n = 1
+        while session_dir.exists():
+            n += 1
+            session_dir = TRACES_DIR / doc_type / f"session_{stamp}_{n}"
+        session_dir.mkdir(parents=True)
 
         filename = f"{doc_type}.docx"
         meta = {
@@ -64,7 +72,7 @@ _ORG_ANCHOR = "org_full"  # поле-якорь ООО
 _LEGAL_FORMS = {"ооо", "оао", "зао", "ао", "пао", "нао", "ип", "муп", "гуп", "фгуп", "ано", "нко"}
 
 
-def normalize_org(s) -> str:
+def normalize_org(s: Any) -> str:
     """Максимальная нормализация ООО для матчинга: без юрформы, кавычек, регистра, пунктуации."""
     t = str(s or "").lower()
     t = re.sub(r"[^\w\s]", " ", t, flags=re.UNICODE)  # кавычки/пунктуация → пробел
@@ -73,6 +81,13 @@ def normalize_org(s) -> str:
 
 
 def _load_org_store() -> dict:
+    """
+    Назначение: прочитать персистентный стор значений по ООО с диска.
+    Вход: нет (путь берётся из ORG_STORE_PATH).
+    Выход: dict вида {нормализованное ООО: {field_key: [values...]}}; {} если файла нет.
+    Логика: если файл существует — json.loads его содержимого; при битом JSON
+    или ошибке чтения (JSONDecodeError, OSError) возвращается {} — стор не роняет генерацию.
+    """
     if ORG_STORE_PATH.exists():
         try:
             return json.loads(ORG_STORE_PATH.read_text(encoding="utf-8"))
@@ -82,6 +97,14 @@ def _load_org_store() -> dict:
 
 
 def _save_org_store(store: dict) -> None:
+    """
+    Назначение: атомарно записать стор значений по ООО на диск.
+    Вход: store — dict {нормализованное ООО: {field_key: [values...]}}.
+    Выход: None.
+    Логика: создаёт каталог ORG_STORE_PATH при необходимости, пишет JSON
+    (ensure_ascii=False, indent=2) во временный файл с суффиксом .tmp рядом
+    и затем заменяет им целевой файл через Path.replace — частично записанного стора не бывает.
+    """
     ORG_STORE_PATH.parent.mkdir(parents=True, exist_ok=True)
     tmp = ORG_STORE_PATH.with_suffix(".tmp")
     tmp.write_text(json.dumps(store, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -129,7 +152,7 @@ def get_graph() -> dict:
     return json.loads(GRAPH_PATH.read_text(encoding="utf-8"))
 
 
-def get_schema(doc_type: str):
+def get_schema(doc_type: str) -> dict | None:
     """схема плейсхолдеров типа (UI рисует форму) или None"""
     g = get_generator(doc_type)
     if not g:

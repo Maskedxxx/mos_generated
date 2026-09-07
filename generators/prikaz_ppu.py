@@ -2,13 +2,14 @@
 """
 Генератор документа «Приказ о системе подачи и реализации ППУ» (doc_type=prikaz_ppu).
 
-Контракт (см. skill mosgen-dev §1.1): DOC_TYPE, TEMPLATE, SCHEMA, generate(values).
+Контракт (контракт генератора — docs/ADD_GENERATOR.md): DOC_TYPE, TEMPLATE, SCHEMA, generate(values).
 Сборка через docxtpl: шаблон templates/prikaz_ppu.docx с метками {{...}} (эталон —
 канонический образец заказчика «ПРИМЕР №1 ООО Содекс»). Плейсхолдеры самодостаточные
 (наследование между типами не используется — графа заказчика пока нет).
 Город издания «г. Москва» и весь методический текст зашиты в шаблон (константы проекта).
 """
 from pathlib import Path
+from typing import Any
 
 try:
     from docxtpl import DocxTemplate
@@ -17,6 +18,12 @@ except ImportError:  # docxtpl ставится в venv сервиса
 
 
 class PrikazPpu:
+    """
+    Генератор «Приказ о системе подачи и реализации ППУ» — .docx по шаблону prikaz_ppu.docx.
+    Пользователь вводит 6 обязательных полей (все source=own, наследование не используется): организация, номер и дата приказа,
+    ответственный за подачу и сбор ППУ (вин. падеж), должность подписанта (default «Генеральный директор») и ФИО подписанта.
+    В шаблон зашиты: город издания «г. Москва» и весь методический текст (эталон «ПРИМЕР №1 ООО Содекс»).
+    """
     DOC_TYPE = "prikaz_ppu"
     TITLE = "Приказ о системе подачи и реализации ППУ"
     # путь к шаблону относительно корня сервиса: mos_generated/templates/prikaz_ppu.docx
@@ -42,7 +49,7 @@ class PrikazPpu:
         ctx.update({k: v for k, v in (values or {}).items() if v not in (None, "")})
         return ctx
 
-    def generate(self, values: dict):
+    def generate(self, values: dict) -> Any:
         """собрать .docx: проверить обязательные → подставить в шаблон. Возвращает DocxTemplate (API сохранит)."""
         ctx = self.context(values)
         # проверка обязательных полей (после мёржа дефолтов)

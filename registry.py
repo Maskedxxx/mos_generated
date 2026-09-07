@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-Реестр генераторов — единая точка регистрации типов (см. skill mosgen-dev §1.1).
+Реестр генераторов — единая точка регистрации типов (контракт генератора — docs/ADD_GENERATOR.md).
 Движок и API работают с типами обобщённо через GENERATORS, не зная внутренностей модулей.
 Новый тип = добавить импорт + строку в GENERATORS.
 """
+from typing import Any
+
 from generators.akt_nachala import AktNachala
 from generators.prikaz_ppu import PrikazPpu
 from generators.polozhenie_ppu import PolozheniePpu
@@ -40,7 +42,7 @@ GENERATORS = {
 }
 
 
-def get_generator(doc_type: str):
+def get_generator(doc_type: str) -> Any | None:
     """вернуть экземпляр генератора по doc_type (или None)"""
     cls = GENERATORS.get(doc_type)
     return cls() if cls else None
