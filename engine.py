@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -69,6 +70,9 @@ def _write_trace(doc_type: str, session_id: str, values: dict,
 # Путь переопределяется переменной GEN_ORG_STORE (в Docker — том). Каталог создаётся при записи.
 ORG_STORE_PATH = Path(os.getenv("GEN_ORG_STORE") or Path(__file__).resolve().parent / "_org_store.json")
 _ORG_ANCHOR = "org_full"  # поле-якорь ООО
+# Блокировка read-modify-write стора: без неё параллельные generate затирают записи
+# друг друга (гонка, 10 параллельных → часть ООО теряется, находка 5.4d).
+_ORG_STORE_LOCK = threading.Lock()
 _LEGAL_FORMS = {"ооо", "оао", "зао", "ао", "пао", "нао", "ип", "муп", "гуп", "фгуп", "ано", "нко"}
 
 
@@ -116,17 +120,19 @@ def _store_org_values(values: dict) -> None:
     key = normalize_org(values.get(_ORG_ANCHOR, ""))
     if not key:
         return
-    store = _load_org_store()
-    bucket = store.setdefault(key, {})
-    for k, v in values.items():
-        if v in (None, ""):
-            continue
-        lst = bucket.setdefault(k, [])
-        if v in lst:
-            lst.remove(v)
-        lst.insert(0, v)
-        del lst[10:]
-    _save_org_store(store)
+    # Чтение-изменение-запись под блокировкой — иначе параллельные вызовы теряют записи (5.4d).
+    with _ORG_STORE_LOCK:
+        store = _load_org_store()
+        bucket = store.setdefault(key, {})
+        for k, v in values.items():
+            if v in (None, ""):
+                continue
+            lst = bucket.setdefault(k, [])
+            if v in lst:
+                lst.remove(v)
+            lst.insert(0, v)
+            del lst[10:]
+        _save_org_store(store)
 
 
 def org_suggest(org_raw: str) -> dict:
@@ -184,7 +190,12 @@ def generate(doc_type: str, session_id: str, values: dict, client: str | None = 
     # запомнить непустые значения в сессию — чтобы поздние доки наследовали
     sess = SESSIONS.setdefault(session_id, {})
     sess.update({k: v for k, v in merged.items() if v not in (None, "")})
-    _store_org_values(merged)  # накопить значения формы в стор по ООО (персистентно)
+    # Накопление в стор ООО не должно ронять выдачу: документ уже собран (правило CLAUDE.md —
+    # «журнал не роняет выдачу»; распространяем на стор, находка 5.4c — read-only стор давал 500).
+    try:
+        _store_org_values(merged)  # накопить значения формы в стор по ООО (персистентно)
+    except Exception as e:
+        print(f"[org_store] не удалось сохранить значения по ООО: {e}")
     _write_trace(doc_type, session_id, merged, data=data, client=client)
     return data
 
