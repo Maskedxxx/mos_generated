@@ -46,15 +46,15 @@ def test_generate_docx_without_leftover_placeholders(doc_type):
 
 @pytest.mark.parametrize("doc_type", sorted(GENERATORS))
 def test_missing_required_raises(doc_type):
-    """Пустые обязательные поля (без дефолта) → ValueError с перечислением ключей."""
+    """Пустые обязательные поля (без дефолта) → ValueError с перечислением ПОДПИСЕЙ полей (F23: не ключей)."""
     g = GENERATORS[doc_type]()
-    without_default = [f["key"] for f in g.SCHEMA if f.get("required") and "default" not in f]
+    without_default = [f for f in g.SCHEMA if f.get("required") and "default" not in f]
     if not without_default:
         pytest.skip(f"{doc_type}: все обязательные поля имеют дефолты")
     with pytest.raises(ValueError) as e:
         engine.generate(doc_type, "test-session", {})
-    for k in without_default:
-        assert k in str(e.value), f"{doc_type}: в ошибке нет поля {k}"
+    for f in without_default:
+        assert (f.get("label") or f["key"]) in str(e.value), f"{doc_type}: в ошибке нет поля {f['key']}"
 
 
 def test_trace_written_on_success_and_error(tmp_path):

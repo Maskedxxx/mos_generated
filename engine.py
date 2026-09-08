@@ -89,13 +89,23 @@ def _load_org_store() -> dict:
     Назначение: прочитать персистентный стор значений по ООО с диска.
     Вход: нет (путь берётся из ORG_STORE_PATH).
     Выход: dict вида {нормализованное ООО: {field_key: [values...]}}; {} если файла нет.
-    Логика: если файл существует — json.loads его содержимого; при битом JSON
-    или ошибке чтения (JSONDecodeError, OSError) возвращается {} — стор не роняет генерацию.
+    Логика: если файл существует — json.loads его содержимого. Битый JSON: файл переименовывается
+    в `_org_store.json.broken-<время>` (история не теряется, администратор может восстановить —
+    находка 5.4b), пишется строка в лог, возвращается {}. Ошибка чтения (OSError) — {}: стор
+    не роняет генерацию.
     """
     if ORG_STORE_PATH.exists():
         try:
             return json.loads(ORG_STORE_PATH.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError):
+        except json.JSONDecodeError as e:
+            broken = ORG_STORE_PATH.with_name(ORG_STORE_PATH.name + ".broken-" + datetime.now().strftime("%Y%m%d_%H%M%S"))
+            try:
+                ORG_STORE_PATH.replace(broken)
+                print(f"[org_store] файл повреждён ({e}); переименован в {broken.name}, стор начат заново")
+            except OSError as e2:
+                print(f"[org_store] файл повреждён ({e}); переименовать не удалось: {e2}")
+            return {}
+        except OSError:
             return {}
     return {}
 
@@ -166,19 +176,68 @@ def get_schema(doc_type: str) -> dict | None:
     return {"doc_type": doc_type, "title": g.TITLE, "fields": g.SCHEMA}
 
 
+# ── Проверка значений формы (F23, находки 5.2a, 5.2b) ──
+_MISSING_PREFIX = "Не заполнены обязательные поля: "
+
+
+def _label(g, key: str) -> str:
+    """Подпись поля по ключу из SCHEMA генератора (или сам ключ, если поля нет)."""
+    for f in g.SCHEMA:
+        if f.get("key") == key:
+            return f.get("label") or key
+    return key
+
+
+def _normalize_values(g, values: dict) -> dict:
+    """
+    Назначение: привести значения формы к строкам до подстановки в шаблон.
+    Логика: None → "" (поле не заполнено); числа → str; список/словарь — ValueError
+    «Поле «<подпись>» должно быть текстом» (раньше в документ попадал Python-repr вроде ['a', 'b']).
+    """
+    out = {}
+    for k, v in values.items():
+        if v is None:
+            out[k] = ""
+        elif isinstance(v, (list, dict, tuple, set)):
+            raise ValueError(f"Поле «{_label(g, k)}» должно быть текстом")
+        elif isinstance(v, bool):
+            out[k] = "да" if v else "нет"
+        elif isinstance(v, (int, float)):
+            out[k] = str(v)
+        else:
+            out[k] = v
+    return out
+
+
+def _humanize_missing(g, e: ValueError) -> ValueError:
+    """«Не заполнены обязательные поля: ['org_full', …]» (ключи из генератора) → подписи полей через схему."""
+    text = str(e)
+    if not text.startswith(_MISSING_PREFIX):
+        return e
+    keys = [k for k in re.findall(r"'([^']+)'", text[len(_MISSING_PREFIX):])]
+    if not keys:
+        return e
+    return ValueError(_MISSING_PREFIX + ", ".join(f"«{_label(g, k)}»" for k in keys))
+
+
 def generate(doc_type: str, session_id: str, values: dict, client: str | None = None) -> bytes:
     """собрать .docx: подтянуть наследуемые из сессии → сгенерировать → запомнить значения в сессию"""
     g = get_generator(doc_type)
     if not g:
         raise KeyError(doc_type)
     prior = SESSIONS.get(session_id, {})
-    merged = dict(values or {})
+    merged = _normalize_values(g, values or {})
     # наследование: inherited-поля, не заполненные в форме, тянем из сессии
     for f in g.SCHEMA:
         if f.get("source") == "inherited" and not merged.get(f["key"]) and prior.get(f["key"]):
             merged[f["key"]] = prior[f["key"]]
     try:
         doc = g.generate(merged)        # может бросить ValueError при пустых обязательных
+    except ValueError as e:
+        # «Не заполнены обязательные поля: [ключи]» → подписи полей из схемы (находка 5.2a)
+        e = _humanize_missing(g, e)
+        _write_trace(doc_type, session_id, merged, error=str(e), client=client)
+        raise e
     except Exception as e:
         # неудачную попытку тоже журналируем: видно, сколько раз документ не удалось получить
         _write_trace(doc_type, session_id, merged, error=str(e), client=client)

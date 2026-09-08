@@ -4,7 +4,7 @@ HTTP API сервиса mos_generated (API-first). Контракт API — docs
 Запуск: .venv/bin/uvicorn api:app --host 127.0.0.1 --port 8090
 """
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import Response, FileResponse
+from fastapi.responses import Response, FileResponse, JSONResponse
 from pydantic import BaseModel
 
 import engine
@@ -45,10 +45,23 @@ def generate(doc_type: str, req: GenerateRequest, request: Request) -> Response:
         raise HTTPException(status_code=404, detail=f"неизвестный тип: {doc_type}")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return _template_error(doc_type, e)
     return Response(
         content=data,
         media_type=DOCX_MIME,
         headers={"Content-Disposition": f'attachment; filename="{doc_type}.docx"'},
+    )
+
+
+def _template_error(doc_type: str, e: Exception) -> JSONResponse:
+    """Сбой сборки документа (шаблон повреждён/отсутствует и т.п.) → 500 с текстом вместо пустого
+    «Internal Server Error» (аудит устойчивости, находка 5.4e). Исходная ошибка — в technical и в логе."""
+    print(f"[generate] {doc_type}: {type(e).__name__}: {e}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Не удалось собрать документ «{doc_type}»: шаблон недоступен или повреждён. Обратитесь к администратору.",
+                 "technical": f"{type(e).__name__}: {e}"},
     )
 
 
@@ -64,6 +77,8 @@ def download(doc_type: str, request: Request) -> Response:
         raise HTTPException(status_code=404, detail=f"неизвестный тип: {doc_type}")
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        return _template_error(doc_type, e)
     return Response(
         content=data,
         media_type=DOCX_MIME,
