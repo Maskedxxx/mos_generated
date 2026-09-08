@@ -3,6 +3,9 @@
 HTTP API сервиса mos_generated (API-first). Контракт API — docs/ARCHITECTURE.md §2.
 Запуск: .venv/bin/uvicorn api:app --host 127.0.0.1 --port 8090
 """
+import sys
+import threading
+import time
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response, FileResponse, JSONResponse
 from pydantic import BaseModel
@@ -10,6 +13,29 @@ from pydantic import BaseModel
 import engine
 
 app = FastAPI(title="mos_generated", description="Сервис генерации документов по шаблонам")
+
+
+def _traces_retention_job() -> None:
+    """F28: очистка журнала генераций по лимиту GEN_TRACES_MAX_GB (самые старые session_* целиком)."""
+    try:
+        removed = engine.prune_traces()
+    except Exception as e:
+        print(f"[RETENTION] ошибка очистки журнала: {e}", file=sys.stderr, flush=True)
+        return
+    if removed:
+        names = ", ".join(p.name for p in removed[:5]) + ("…" if len(removed) > 5 else "")
+        print(f"[RETENTION] {engine.TRACES_DIR.name}: лимит GEN_TRACES_MAX_GB={engine.TRACES_MAX_GB} ГБ превышен — удалено каталогов: {len(removed)} ({names})", file=sys.stderr, flush=True)
+
+
+@app.on_event("startup")
+def _start_traces_retention() -> None:
+    """F28: ротация журнала — сразу при старте (в фоне) и затем раз в сутки."""
+    def _loop() -> None:
+        while True:
+            time.sleep(86400)
+            _traces_retention_job()
+    threading.Thread(target=_traces_retention_job, daemon=True, name="retention-startup").start()
+    threading.Thread(target=_loop, daemon=True, name="retention").start()
 
 DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
 

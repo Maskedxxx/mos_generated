@@ -6,6 +6,7 @@
 import io
 import json
 import os
+import shutil
 import re
 import threading
 from datetime import datetime
@@ -26,6 +27,35 @@ SESSIONS: dict[str, dict] = {}
 # что выдали и когда. Без этого нельзя ответить «сколько документов выпущено».
 # Путь переопределяется переменной GEN_TRACES_DIR (в Docker — том).
 TRACES_DIR = Path(os.getenv("GEN_TRACES_DIR") or Path(__file__).resolve().parent / "logs_generated")
+# F28: лимит журнала по объёму (ГБ); 0 — не удалять. Проверяется при старте и раз в сутки (api.py).
+TRACES_MAX_GB = float(os.getenv("GEN_TRACES_MAX_GB", "1"))
+
+
+def _dir_size(path: Path) -> int:
+    """Размер каталога в байтах (рекурсивно, без симлинков)."""
+    return sum(p.stat().st_size for p in path.rglob("*") if p.is_file() and not p.is_symlink())
+
+
+def prune_traces(root: Path | None = None, max_gb: float | None = None) -> list[Path]:
+    """
+    F28: пока журнал больше лимита — удаляет самые старые каталоги session_* целиком (по mtime).
+    root/max_gb по умолчанию — TRACES_DIR / TRACES_MAX_GB; 0 — ничего не удалять. Возвращает удалённые каталоги.
+    """
+    root = TRACES_DIR if root is None else root
+    max_gb = TRACES_MAX_GB if max_gb is None else max_gb
+    removed: list[Path] = []
+    if max_gb <= 0 or not root.exists():
+        return removed
+    limit = int(max_gb * 1024 ** 3)
+    total = _dir_size(root)
+    for p in sorted((p for p in root.glob("*/session_*") if p.is_dir()), key=lambda p: p.stat().st_mtime):
+        if total <= limit:
+            break
+        size = _dir_size(p)
+        shutil.rmtree(p, ignore_errors=True)
+        total -= size
+        removed.append(p)
+    return removed
 
 
 def _write_trace(doc_type: str, session_id: str, values: dict,
