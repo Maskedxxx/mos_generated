@@ -40,11 +40,11 @@ class AktNachala:
         {"key": "agreement_date",    "label": "Дата Соглашения",                           "type": "text", "required": True, "source": "own", "hint": "«15» мая 2026 г."},
         {"key": "agreement_num",     "label": "Номер Соглашения",                          "type": "text", "required": True, "source": "own", "hint": "№36-104-2026/ППТ"},
         # --- РЦК (с дефолтом, можно изменить) ---
-        {"key": "rck_rep_role_gen",  "label": "РЦК: должность представителя (род.)",        "type": "text", "required": True, "source": "own", "default": "заместителя начальника управления"},
-        {"key": "rck_rep_fio_gen",   "label": "РЦК: ФИО представителя (род.)",             "type": "text", "required": True, "source": "own", "default": "Ахмедьянова Дениса Арэвкатовича"},
-        {"key": "rck_rep_role_nom",  "label": "РЦК: должность (подпись)",                  "type": "text", "required": True, "source": "own", "default": "Заместитель начальника управления"},
-        {"key": "rck_rep_fio_short", "label": "РЦК: ФИО кратко (подпись)",                 "type": "text", "required": True, "source": "own", "default": "Ахмедьянов Д.А."},
-        {"key": "doverennost",       "label": "Доверенность РЦК (дата и номер)",           "type": "text", "required": True, "source": "own", "default": "08.12.2025 №17/2025"},
+        {"key": "rck_rep_role_gen",  "label": "РЦК: должность представителя (род.)",        "type": "text", "required": True, "source": "own", "default": "начальника управления РЦК"},
+        {"key": "rck_rep_fio_gen",   "label": "РЦК: ФИО представителя (род.)",             "type": "text", "required": True, "source": "own", "default": "Подволоцкого Антона Андреевича"},
+        {"key": "rck_rep_role_nom",  "label": "РЦК: должность (подпись)",                  "type": "text", "required": True, "source": "own", "default": "Начальник управления"},
+        {"key": "rck_rep_fio_short", "label": "РЦК: ФИО кратко (подпись)",                 "type": "text", "required": True, "source": "own", "default": "А.А. Подволоцкий"},
+        {"key": "doverennost",       "label": "Доверенность РЦК (дата и номер)",           "type": "text", "required": True, "source": "own", "default": "13.07.2026 №10/2026"},
     ]
 
     def defaults(self) -> dict:
