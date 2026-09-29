@@ -34,6 +34,9 @@ def sample_values(schema: list) -> dict:
         k = f["key"]
         if "org" in k and "rep" not in k:
             out[k] = "ООО «Тестовая организация»"
+        elif k.startswith("resp") and k[4:].isdigit():
+            # ответственные «должность, ФИО, тел., почта»: из ФИО строится Приложение № 3 приказа 0.2
+            out[k] = "начальник цеха Иванов И.И., +7 900 000-00-00, ii@test.ru"
         elif "fio" in k or "responsible" in k:
             out[k] = "Иванов Иван Иванович"
         elif "date" in k:
