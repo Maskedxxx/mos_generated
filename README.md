@@ -34,7 +34,7 @@ Python 3.12. Больше ничего: ни модели, ни LibreOffice. В�
 ```bash
 git clone <repo> mos_generated && cd mos_generated
 python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
-.venv/bin/pytest -q                      # 56 тестов, ~3 с
+.venv/bin/pytest -q                      # 95 тестов, ~6 с
 bash scripts/restart.sh                  # uvicorn api:app в screen `mosgen`, порт 8090
 curl -s http://localhost:8090/api/graph | head -c 200
 ```
