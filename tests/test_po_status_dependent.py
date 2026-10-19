@@ -2,7 +2,8 @@
 """
 Зависимые поля 3.5 (решение владельца 29.09): в приказе о формировании ПО выбор «является / не является»
 структурным подразделением. При «не является» п.3 (штатное расписание и ДИ) и п.4 (штатное расписание и
-оргструктура) не требуются: поля неактивны (required_if), в документе — прочерк, пункты остаются.
+оргструктура) не требуются: поля неактивны (required_if), а пункты из приказа удаляются, нумерация (автоматическая,
+Word) сдвигается — как в образцах заказчика (19.10.2026; до этого пункты оставались с прочерком).
 """
 import io
 
@@ -57,20 +58,31 @@ def test_structural_requires_dependent_fields():
         assert label in str(e.value)
 
 
+def _numbered(data: bytes) -> list:
+    """Тексты пунктов приказа с автонумерацией Word (абзацы с numPr), по порядку."""
+    return [p.text for p in Document(io.BytesIO(data)).paragraphs if p._p.pPr is not None and p._p.pPr.numPr is not None]
+
+
 def test_not_structural_generates_without_dependent_fields():
+    """«не является»: п.3 и п.4 (штатное расписание, оргструктура) удалены, остальные пункты на месте, без меток."""
     v = _values(po_status="не является")
     for k in DEPENDENT:
         v.pop(k)
-    items = _items(engine.generate(DOC, "t", v))
-    assert items["p3"] == "Ответственный _______________ срок ______________."
-    assert items["p4"] == "Ответственный _______________ срок ______________."
+    data = engine.generate(DOC, "t", v)
+    assert _items(data) == {}
+    text = "\n".join(p.text for p in Document(io.BytesIO(data)).paragraphs)
+    assert "штатн" not in text and "{%" not in text and "{{" not in text
+    full = _numbered(engine.generate(DOC, "t", _values(po_status="является")))
+    short = _numbered(data)
+    assert len(short) == len(full) - 2
+    assert short == [t for t in full if not t.startswith(("Разработать проект штатного", "Внести изменение в штатное"))]
 
 
 def test_not_structural_ignores_stale_values():
     """Старые значения (например, подставленные по ООО) при «не является» в документ не попадают."""
     v = _values(po_status="не является", resp3="Гл. бухгалтер Петров П.П.", srok3="06.06.2026")
-    items = _items(engine.generate(DOC, "t", v))
-    assert "Петров" not in items["p3"] and "06.06.2026" not in items["p3"]
+    text = "\n".join(p.text for p in Document(io.BytesIO(engine.generate(DOC, "t", v))).paragraphs)
+    assert "Петров" not in text and "06.06.2026" not in text
 
 
 def test_structural_values_land_in_document():
